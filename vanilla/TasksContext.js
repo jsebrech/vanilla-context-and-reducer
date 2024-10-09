@@ -1,15 +1,10 @@
+import { ContextProvider } from "./lib/tiny-context.js";
+
 customElements.define('tasks-context', class extends HTMLElement {
-    #tasks = structuredClone(initialTasks);
-    get tasks() { return this.#tasks; }
-    set tasks(tasks) {
-        this.#tasks = tasks;
-        this.dispatchEvent(new Event('change'));
-    }
-
-    dispatch(action) {
-        this.tasks = tasksReducer(this.tasks, action);
-    }
-
+    tasksProvider = new ContextProvider(this, 'tasks', structuredClone(initialTasks));
+    dispatchProvider = new ContextProvider(this, 'tasks-dispatch', (action) => {
+        this.tasksProvider.value = tasksReducer(this.tasksProvider.value, action);
+    })
     connectedCallback() {
         this.style.display = 'contents';
     }

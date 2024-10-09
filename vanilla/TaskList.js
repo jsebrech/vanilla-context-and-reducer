@@ -1,16 +1,27 @@
+import { ContextRequestEvent } from "./lib/tiny-context.js";
+
 customElements.define('task-list', class extends HTMLElement {
-    get context() { return this.closest('tasks-context'); }
-    
+    #tasks;
+    #unsubscribe;
+
     connectedCallback() {
-        this.context.addEventListener('change', () => this.update());
-        this.append(document.createElement('ul'));
+        this.innerHTML = '<ul></ul>';
+        this.dispatchEvent(new ContextRequestEvent('tasks', (tasks, unsubscribe) => {
+            this.#tasks = tasks;
+            this.#unsubscribe = unsubscribe;
+            this.update();
+        }, true));
         this.update();
+    }
+
+    disconnectedCallback() {
+        this.#unsubscribe?.();
     }
 
     update() {
         const ul = this.querySelector('ul');
         let before = ul.firstChild;
-        this.context.tasks.forEach(task => {
+        this.#tasks.forEach(task => {
             let li = ul.querySelector(`:scope > [data-key="${task.id}"]`);
             if (!li) {
                 li = document.createElement('li');
@@ -35,7 +46,6 @@ customElements.define('task-item', class extends HTMLElement {
     #isEditing = false;
     #task;
     set task(task) { this.#task = task; this.update(); }
-    get context() { return this.closest('tasks-context'); }
 
     connectedCallback() {
         if (this.querySelector('label')) return;
@@ -50,22 +60,26 @@ customElements.define('task-item', class extends HTMLElement {
             </label>
         `;
         this.querySelector('input[type=checkbox]').onchange = e => {
-            this.context.dispatch({
-                type: 'changed',
-                task: {
-                    ...this.#task,
-                    done: e.target.checked
-                }
-            });
+            this.dispatchEvent(new ContextRequestEvent('tasks-dispatch', (dispatch) => {
+                dispatch({
+                    type: 'changed',
+                    task: {
+                        ...this.#task,
+                        done: e.target.checked
+                    }
+                });
+            }));
         };
         this.querySelector('input[type=text]').onchange = e => {
-            this.context.dispatch({
-                type: 'changed',
-                task: {
-                    ...this.#task,
-                    text: e.target.value
-                }
-            });
+            this.dispatchEvent(new ContextRequestEvent('tasks-dispatch', (dispatch) => {
+                dispatch({
+                    type: 'changed',
+                    task: {
+                        ...this.#task,
+                        text: e.target.value
+                    }
+                });
+            }));
         };
         this.querySelector('button#edit').onclick = () => {
             this.#isEditing = true;
@@ -76,12 +90,13 @@ customElements.define('task-item', class extends HTMLElement {
             this.update();
         };
         this.querySelector('button#delete').onclick = () => {
-            this.context.dispatch({
-                type: 'deleted',
-                id: this.#task.id
-            });
+            this.dispatchEvent(new ContextRequestEvent('tasks-dispatch', (dispatch) => {
+                dispatch({
+                    type: 'deleted',
+                    id: this.#task.id
+                });
+            }));
         };
-        this.context.addEventListener('change', () => this.update());
         this.update();
     }
 

@@ -1,3 +1,5 @@
+import { ContextRequestEvent } from "./lib/tiny-context.js";
+
 customElements.define('task-add', class extends HTMLElement {
     connectedCallback() {
         this.innerHTML = `
@@ -6,11 +8,13 @@ customElements.define('task-add', class extends HTMLElement {
         `;
         this.querySelector('button').onclick = () => {
             const input = this.querySelector('input');
-            this.closest('tasks-context').dispatch({
-                type: 'added',
-                id: nextId++,
-                text: input.value
-            });
+            this.dispatchEvent(new ContextRequestEvent('tasks-dispatch', (dispatch) => {
+                dispatch({
+                    type: 'added',
+                    id: nextId++,
+                    text: input.value
+                });
+            }));
             input.value = '';
         };
     }
